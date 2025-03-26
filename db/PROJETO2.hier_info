@@ -1,0 +1,32 @@
+|module_mini_cpu
+switch[0] => ~NO_FANOUT~
+switch[1] => ~NO_FANOUT~
+switch[2] => ~NO_FANOUT~
+switch[3] => ~NO_FANOUT~
+switch[4] => ~NO_FANOUT~
+switch[5] => ~NO_FANOUT~
+switch[6] => ~NO_FANOUT~
+switch[7] => ~NO_FANOUT~
+switch[8] => ~NO_FANOUT~
+switch[9] => ~NO_FANOUT~
+switch[10] => ~NO_FANOUT~
+switch[11] => ~NO_FANOUT~
+switch[12] => ~NO_FANOUT~
+switch[13] => ~NO_FANOUT~
+switch[14] => ~NO_FANOUT~
+switch[15] => Decoder0.IN2
+switch[15] => Equal0.IN31
+switch[16] => Decoder0.IN1
+switch[16] => Equal0.IN30
+switch[17] => Decoder0.IN0
+switch[17] => Equal0.IN29
+b_en => on.CLK
+b_send => state.DATAB
+b_send => state.OUTPUTSELECT
+b_send => state.OUTPUTSELECT
+b_send => state.OUTPUTSELECT
+b_send => state.OUTPUTSELECT
+b_send => state.DATAB
+clk => state~1.DATAIN
+
+

@@ -1,0 +1,13 @@
+
+State Machine - |module_mini_cpu|state
+Name state.SHOW state.SEND state.CALCULATE state.RESET state.GET state.WAIT_UNPRESS_EN state.WAIT_PRESS_EN state.DECOD state.INIT state.OFF 
+state.OFF 0 0 0 0 0 0 0 0 0 0 
+state.INIT 0 0 0 0 0 0 0 0 1 1 
+state.DECOD 0 0 0 0 0 0 0 1 0 1 
+state.WAIT_PRESS_EN 0 0 0 0 0 0 1 0 0 1 
+state.WAIT_UNPRESS_EN 0 0 0 0 0 1 0 0 0 1 
+state.GET 0 0 0 0 1 0 0 0 0 1 
+state.RESET 0 0 0 1 0 0 0 0 0 1 
+state.CALCULATE 0 0 1 0 0 0 0 0 0 1 
+state.SEND 0 1 0 0 0 0 0 0 0 1 
+state.SHOW 1 0 0 0 0 0 0 0 0 1 
