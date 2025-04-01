@@ -1,6 +1,7 @@
 module lcd_display (
 	input clk,
-	input [1:0] operation,
+	input on,
+	input upd;
 	input [3:0] opcode, 
 	input [3:0] addr,
 	output reg EN, RW, RS, done_show,
@@ -8,7 +9,7 @@ module lcd_display (
 );
 
 parameter WRITE = 0, WAIT = 1; // Estados do lcd
-parameter DISPLAY_OFF = 0, UPDATE = 1, SHOW = 2; // Tipos de operações
+parameter OFF = 0, INIT = 1, UPDATE = 2, SHOW = 3; // Tipos de operações
 parameter LOAD = 0, ADD = 1, ADDI = 2, SUB = 3, SUBI = 4, MUL = 5, CLEAR = 6, DISPLAY = 7; // Comandos do opcode
 
 reg state = WRITE;
@@ -19,25 +20,9 @@ reg [7:0] show_addr [3:0];
 reg [7:0] show_data_addr [5:0];
 reg [14:0] num_data;
 reg [15:0] data_addr = 69;
+reg [1:0] operation;
 
 integer counter = 0;
-
-initial begin
-	show_opcode[3] <= 8'h2D; // Write '-'
-	show_opcode[2] <= 8'h2D; // Write '-'
-	show_opcode[1] <= 8'h2D; // Write '-'
-	show_opcode[0] <= 8'h2D; // Write '-'
-	show_addr[3] <= 8'h2D; // Write '-'
-	show_addr[2] <= 8'h2D; // Write '-'
-	show_addr[1] <= 8'h2D; // Write '-'
-	show_addr[0] <= 8'h2D; // Write '-'
-	show_data_addr[5] <= 8'h2B; // Write +
-	show_data_addr[4] <= 8'h30; // Write 0
-	show_data_addr[3] <= 8'h30; // Write 0
-	show_data_addr[2] <= 8'h30; // Write 0
-	show_data_addr[1] <= 8'h30; // Write 0
-	show_data_addr[0] <= 8'h30; // Write 0
-end
 
 always @ (posedge clk) begin
 	case (state)
@@ -52,9 +37,9 @@ always @ (posedge clk) begin
 			if (counter == 50000 - 1) begin
 				counter <= 0;
 				state <= WRITE;
-				if (operation == DISPLAY_OFF) begin
+				if (operation == OFF) begin
 					if (instructions < 2) instructions <= instructions + 1;
-					else instructions <= 0;
+					else instructions <= instructions;
 				end else if (operation == SHOW) begin
 					if (instructions < 41) instructions <= instructions + 1;
 					else instructions <= instructions;
@@ -66,6 +51,15 @@ always @ (posedge clk) begin
 	endcase
 end
 
+always @(posedge clk) begin 
+	case(operation)
+		OFF: begin operation <= (on)? INIT : operation; end
+		INIT: begin operation <= (on)? SHOW : OFF; end
+		UPDATE: begin operation <= (on)? SHOW : OFF; end
+		SHOW: begin operation <= (on)? (upd)? UPDATE: SHOW : OFF; end
+	endcase
+end
+
 always @ (posedge clk) begin
 	case (state) 
 		WRITE: EN <= 1;
@@ -73,16 +67,29 @@ always @ (posedge clk) begin
 	endcase
 	
 	case (operation)
-		DISPLAY_OFF: begin
-			case (instructions) 
+		OFF: begin 
+			case(instructions)
 				0: begin data <= 8'h38; RS <= 0; end // Set 2 lines
 				1: begin data <= 8'h08; RS <= 0; end // Display off, cursor off
-				default: begin data <= 8'h02; RS <= 0; end // Return home // 
 			endcase
+		INIT: begin
+			show_opcode[3] <= 8'h2D; // Write '-'
+			show_opcode[2] <= 8'h2D; // Write '-'
+			show_opcode[1] <= 8'h2D; // Write '-'
+			show_opcode[0] <= 8'h2D; // Write '-'
+			show_addr[3] <= 8'h2D; // Write '-'
+			show_addr[2] <= 8'h2D; // Write '-'
+			show_addr[1] <= 8'h2D; // Write '-'
+			show_addr[0] <= 8'h2D; // Write '-'
+			show_data_addr[5] <= 8'h2B; // Write +
+			show_data_addr[4] <= 8'h30; // Write 0
+			show_data_addr[3] <= 8'h30; // Write 0
+			show_data_addr[2] <= 8'h30; // Write 0
+			show_data_addr[1] <= 8'h30; // Write 0
+			show_data_addr[0] <= 8'h30; // Write 0
 		end
 		UPDATE: begin
 			done_show <= 0;
-			
 			case (opcode)
 				LOAD: begin 
 					show_opcode[3] <= 8'h4C; // L
@@ -151,8 +158,7 @@ always @ (posedge clk) begin
 		end
 		
 		SHOW: begin
-
-			case (instructions) 
+			case (instructions)
 				0: begin data <= 8'h38; RS <= 0; end // Set 2 lines
 				1: begin data <= 8'h0E; RS <= 0; end // Display on, cursor blinking
 				2: begin data <= 8'h01; RS <= 0; end // Clear display screen
