@@ -1,0 +1,32 @@
+
+State Machine - |module_mini_cpu|state
+Name state.SHOW_DISPLAY state.GET_UPDATE state.SET_OK state.SET_RAM state.ULA_OK state.CALCULATE state.RESET_OK state.RESET_RAM state.GET2_OK state.GET2 state.GET1_OK state.GET1 state.WAIT_UNPRESS_EN state.WAIT_PRESS_EN state.OFF 
+state.OFF 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+state.WAIT_PRESS_EN 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 
+state.WAIT_UNPRESS_EN 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1 
+state.GET1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 
+state.GET1_OK 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 
+state.GET2 0 0 0 0 0 0 0 0 0 1 0 0 0 0 1 
+state.GET2_OK 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 
+state.RESET_RAM 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 
+state.RESET_OK 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 
+state.CALCULATE 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 
+state.ULA_OK 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 
+state.SET_RAM 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1 
+state.SET_OK 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 
+state.GET_UPDATE 0 1 0 0 0 0 0 0 0 0 0 0 0 0 1 
+state.SHOW_DISPLAY 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 
+
+State Machine - |module_mini_cpu|cpu_ula:ula|state
+Name state.START state.FINISH state.CALCULATE 
+state.START 0 0 0 
+state.CALCULATE 1 0 1 
+state.FINISH 1 1 0 
+
+State Machine - |module_mini_cpu|memory:ram|state
+Name state.SET state.GET state.DECODER state.IDLE state.CLEAR 
+state.IDLE 0 0 0 0 0 
+state.DECODER 0 0 1 1 0 
+state.GET 0 1 0 1 0 
+state.SET 1 0 0 1 0 
+state.CLEAR 0 0 0 1 1 

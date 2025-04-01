@@ -3,8 +3,7 @@ module lcd_display (
 	input [1:0] operation,
 	input [3:0] opcode, 
 	input [3:0] addr,
-	input [15:0] data_addr,
-	output reg EN, RW, RS, done_off, done_update, done_show,
+	output reg EN, RW, RS, done_show,
 	output reg [7:0] data
 );
 
@@ -12,7 +11,6 @@ parameter WRITE = 0, WAIT = 1; // Estados do lcd
 parameter DISPLAY_OFF = 0, UPDATE = 1, SHOW = 2; // Tipos de operações
 parameter LOAD = 0, ADD = 1, ADDI = 2, SUB = 3, SUBI = 4, MUL = 5, CLEAR = 6, DISPLAY = 7; // Comandos do opcode
 
-reg init = 1;
 reg state = WRITE;
 reg [5:0] instructions = 0;
 
@@ -20,8 +18,26 @@ reg [7:0] show_opcode [3:0];
 reg [7:0] show_addr [3:0];
 reg [7:0] show_data_addr [5:0];
 reg [14:0] num_data;
+reg [15:0] data_addr = 69;
 
 integer counter = 0;
+
+initial begin
+	show_opcode[3] <= 8'h2D; // Write '-'
+	show_opcode[2] <= 8'h2D; // Write '-'
+	show_opcode[1] <= 8'h2D; // Write '-'
+	show_opcode[0] <= 8'h2D; // Write '-'
+	show_addr[3] <= 8'h2D; // Write '-'
+	show_addr[2] <= 8'h2D; // Write '-'
+	show_addr[1] <= 8'h2D; // Write '-'
+	show_addr[0] <= 8'h2D; // Write '-'
+	show_data_addr[5] <= 8'h2B; // Write +
+	show_data_addr[4] <= 8'h30; // Write 0
+	show_data_addr[3] <= 8'h30; // Write 0
+	show_data_addr[2] <= 8'h30; // Write 0
+	show_data_addr[1] <= 8'h30; // Write 0
+	show_data_addr[0] <= 8'h30; // Write 0
+end
 
 always @ (posedge clk) begin
 	case (state)
@@ -36,8 +52,11 @@ always @ (posedge clk) begin
 			if (counter == 50000 - 1) begin
 				counter <= 0;
 				state <= WRITE;
-				if (operation != UPDATE) begin
-					if (instructions < 40) instructions <= instructions + 1;
+				if (operation == DISPLAY_OFF) begin
+					if (instructions < 2) instructions <= instructions + 1;
+					else instructions <= 0;
+				end else if (operation == SHOW) begin
+					if (instructions < 41) instructions <= instructions + 1;
 					else instructions <= instructions;
 				end else 
 					instructions <= 0;
@@ -58,30 +77,12 @@ always @ (posedge clk) begin
 			case (instructions) 
 				0: begin data <= 8'h38; RS <= 0; end // Set 2 lines
 				1: begin data <= 8'h08; RS <= 0; end // Display off, cursor off
-				default: begin data <= 8'h08; RS <= 0; done_off <= 1; end // Display off, cursor off
+				default: begin data <= 8'h02; RS <= 0; end // Return home // 
 			endcase
 		end
 		UPDATE: begin
-			done_off <= 0;
 			done_show <= 0;
-
-			if (init == 1) begin
-				show_opcode[3] <= 8'h2D; // Write '-'
-				show_opcode[2] <= 8'h2D; // Write '-'
-				show_opcode[1] <= 8'h2D; // Write '-'
-				show_opcode[0] <= 8'h2D; // Write '-'
-				show_addr[3] <= 8'h2D; // Write '-'
-				show_addr[2] <= 8'h2D; // Write '-'
-				show_addr[1] <= 8'h2D; // Write '-'
-				show_addr[0] <= 8'h2D; // Write '-'
-				show_data_addr[5] <= 8'h2B; // Write +
-				show_data_addr[4] <= 8'h30; // Write 0
-				show_data_addr[3] <= 8'h30; // Write 0
-				show_data_addr[2] <= 8'h30; // Write 0
-				show_data_addr[1] <= 8'h30; // Write 0
-				show_data_addr[0] <= 8'h30; // Write 0
-			end
-
+			
 			case (opcode)
 				LOAD: begin 
 					show_opcode[3] <= 8'h4C; // L
@@ -146,12 +147,10 @@ always @ (posedge clk) begin
 			show_data_addr[2] <= ((num_data / 100) % 10) + 48;
 			show_data_addr[1] <= ((num_data / 10) % 10) + 48;
 			show_data_addr[0] <= (num_data % 10) + 48;
-
-			done_update <= 1;
+				
 		end
 		
 		SHOW: begin
-			if (init == 1) init <= 0;
 
 			case (instructions) 
 				0: begin data <= 8'h38; RS <= 0; end // Set 2 lines
@@ -186,14 +185,15 @@ always @ (posedge clk) begin
 				29: begin data <= 8'h14; RS <= 0; end // Move cursor right by one character
 				30: begin data <= 8'h14; RS <= 0; end // Move cursor right by one character
 				31: begin data <= 8'h14; RS <= 0; end // Move cursor right by one character
-				32: begin data <= show_data_addr[5]; RS <= 1; end
-				33: begin data <= show_data_addr[4]; RS <= 1; end
-				34: begin data <= show_data_addr[3]; RS <= 1; end
-				35: begin data <= show_data_addr[2]; RS <= 1; end
-				36: begin data <= show_data_addr[1]; RS <= 1; end
-				37: begin data <= show_data_addr[0]; RS <= 1; end
-				38: begin data <= 8'h02; RS <= 0; end // Return home
-				39: begin data <= 8'h06; RS <= 0; end // Shift cursor to right
+				32: begin data <= 8'h14; RS <= 0; end // Move cursor right by one character
+				33: begin data <= show_data_addr[5]; RS <= 1; end
+				34: begin data <= show_data_addr[4]; RS <= 1; end
+				35: begin data <= show_data_addr[3]; RS <= 1; end
+				36: begin data <= show_data_addr[2]; RS <= 1; end
+				37: begin data <= show_data_addr[1]; RS <= 1; end
+				38: begin data <= show_data_addr[0]; RS <= 1; end
+				39: begin data <= 8'h02; RS <= 0; end // Return home
+				40: begin data <= 8'h06; RS <= 0; end // Shift cursor to right
 				default: done_show <= 1;
 			endcase
 		end

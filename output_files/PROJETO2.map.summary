@@ -1,13 +1,13 @@
-Analysis & Synthesis Status : Successful - Tue Mar 18 18:02:26 2025
-Quartus Prime Version : 20.1.1 Build 720 11/11/2020 SJ Lite Edition
+Analysis & Synthesis Status : Successful - Tue Apr  1 10:04:33 2025
+Quartus Prime Version : 21.1.1 Build 850 06/23/2022 SJ Lite Edition
 Revision Name : PROJETO2
-Top-level Entity Name : module_mini_cpu
+Top-level Entity Name : lcd_display
 Family : Cyclone IV E
-Total logic elements : 0
-    Total combinational functions : 0
-    Dedicated logic registers : 0
-Total registers : 0
-Total pins : 21
+Total logic elements : 178
+    Total combinational functions : 175
+    Dedicated logic registers : 73
+Total registers : 73
+Total pins : 23
 Total virtual pins : 0
 Total memory bits : 0
 Embedded Multiplier 9-bit elements : 0

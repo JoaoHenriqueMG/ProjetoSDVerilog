@@ -1,0 +1,3 @@
+Warning (10268): Verilog HDL information at module_mini_cpu.v(123): always construct contains both blocking and non-blocking assignments File: D:/Users/jhmg/ProjetoSDVerilog/module_mini_cpu.v Line: 123
+Info (10281): Verilog HDL Declaration information at module_mini_cpu.v(18): object "DISPLAY" differs only in case from object "display" in the same scope File: D:/Users/jhmg/ProjetoSDVerilog/module_mini_cpu.v Line: 18
+Warning (10268): Verilog HDL information at memory.v(45): always construct contains both blocking and non-blocking assignments File: D:/Users/jhmg/ProjetoSDVerilog/memory.v Line: 45
