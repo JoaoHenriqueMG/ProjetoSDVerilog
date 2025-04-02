@@ -3,13 +3,15 @@ module memory (
 	input [2:0] operation, // 0 - Espera; 1 - Ler dados; 2 - Escrever dados; 3 - Clear
 	input [3:0] address,
 	input [15:0] data_in,
-	output reg [15:0] data_out,
-	output reg done
+	output wire [15:0] data_out,
+	output wire done
 );
 
 parameter IDLE = 0, DECODER = 1, GET = 2, SET = 3, CLEAR = 4;
 reg [3:0] ram [15:0];
 reg [2:0] state = IDLE;
+reg [15:0] reg_data_out;
+reg reg_done;
 
 integer i;
 initial begin
@@ -45,28 +47,31 @@ end
 always @(posedge clk) begin
 	case (state) 
 		IDLE: begin
-			data_out <= data_out;
-			done <= 0;
+			reg_data_out <= reg_data_out;
+			reg_done <= 0;
 		end
 		DECODER: begin
-			data_out <= data_out;
-			done <= 0;
+			reg_data_out <= reg_data_out;
+			reg_done <= 0;
 		end
 		GET: begin
-			data_out <= ram[address];
-			done <= 1;
+			reg_data_out <= ram[address];
+			reg_done <= 1;
 		end
 		SET: begin
 			ram[address] <= data_in;
-			done <= 1;
+			reg_done <= 1;
 		end
 		CLEAR: begin
 			for (i = 0; i < 16; i = i + 1) begin
 				ram[i] = 0;
 			end
-			done <= 1;
+			reg_done <= 1;
 		end
 	endcase
 end
+
+assign done = reg_done;
+assign data_out = reg_data_out;
 
 endmodule
