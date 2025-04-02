@@ -2,7 +2,9 @@ module module_mini_cpu(
 	input [17:0] switch,
 	input b_en, b_send, clk,
 	output EN, RW, RS,
-	output [7:0] inst_lcd
+	output [7:0] inst_lcd,
+	output reg verif,
+	output [15:0] att
 );
 	
 	parameter IDLE = 0, GET = 1, SET = 2, RESET = 3;
@@ -17,24 +19,31 @@ module module_mini_cpu(
 				SUBI = 4, MUL = 5, 
 				CLEAR = 6, DISPLAY = 7;
 				
-	parameter OFF = 0, ON = 1, UPD = 2;
+	parameter UPD = 1, IDLE_LCD = 2;
 	
 	reg on = 0;
+	
 	reg [3:0] state = OFF;
-	reg [1:0] mode_ram = 0;
-	reg [2:0] operation = 0;
+	
 	reg [3:0] address;
+	
 	reg [15:0] data_in;
+	
+	reg [1:0] mode_ram = 0;
+	wire [15:0] data_out;
+	reg done_ram;
+	
 	reg [15:0] value1 = 0;
 	reg [15:0] value2 = 0;
+	reg [15:0] result_ula;
+	reg done_ula;
+	
 	reg [15:0] value3 = 0;
-	wire done_ram;
-	wire done_ula;
-	wire done_display;
-	reg [1:0] op_display = 0;
-	wire [15:0] data_out;
-	wire [15:0] op_result;
+	
+	reg done_display;
+	
 	wire wire_en, wire_rw, wire_rs;
+	reg [1:0] op_display = 0;
 	wire [7:0] data_inst_lcd;
 	
 	memory ram (
@@ -43,12 +52,12 @@ module module_mini_cpu(
 		.address(address),
 		.data_in(data_in),
 		.data_out(data_out),
-		.done(done_ram)
+		.done(done_ram_w)
 	);
 	
 	cpu_ula ula (
 		.clk(clk),
-		.op_code(operation),
+		.op_code(switch[17:15]),
 		.src1(value1),
 		.src2(value2),
 		.op_result(op_result),
@@ -60,14 +69,15 @@ module module_mini_cpu(
 		.command(op_display),
 		.opcode(switch[17:15]),
 		.addr(switch[14:11]),
-		.data_addr(data_out),
-		.EN(wire_en),
-		.RW(wire_rw),
-		.RS(wite_rs),
+		.data_addr(address),
+		.EN(EN),
+		.RW(WR),
+		.RS(RS),
 		.done_display(done_display),
-		.data(data_inst_lcd)
+		.data(inst_lcd)
 	);
 	
+	assign att = data_out;
 	
 	always @(posedge b_en) begin
 		on <= ~on;
@@ -75,13 +85,13 @@ module module_mini_cpu(
 	
 	always @(posedge clk) begin
 		case (state)
-			OFF: begin state <= (on)? (done_display)? WAIT_PRESS_EN : state : state; end
+			OFF: begin state <= (on)? WAIT_PRESS_EN : state; end
 			WAIT_PRESS_EN: begin state <= (on)? (~b_send)? WAIT_UNPRESS_EN : state : RESET_RAM; end
 			WAIT_UNPRESS_EN: begin
 				if (on) begin
-					if (~b_send) begin
+					if (b_send) begin
 						case (switch[17:15])
-							LOAD: state <= SET_RAM;
+							LOAD: begin state <= SET_RAM; end
 							CLEAR: state <= RESET_RAM;
 							DISPLAY: state <= SHOW_DISPLAY;
 							default: state <= GET1;
@@ -101,6 +111,7 @@ module module_mini_cpu(
 						ADDI: state <= CALCULATE;
 						SUB: state <= GET2;
 						SUBI: state <= CALCULATE;
+						MUL: state <= CALCULATE;
 						DISPLAY: state <= SHOW_DISPLAY;
 					endcase
 				end else begin
@@ -116,16 +127,16 @@ module module_mini_cpu(
 			SET_RAM: begin state <= (on)? (done_ram)? SET_OK : state : RESET_RAM; end
 			SET_OK: begin state <= (on)? GET_UPDATE : RESET_RAM; end
 			GET_UPDATE: begin state <= (on)? (done_ram)? SHOW_DISPLAY : state : RESET_RAM; end
-			SHOW_DISPLAY: begin state <= (done_display)? (on)? WAIT_PRESS_EN : RESET_RAM : state; end
+			SHOW_DISPLAY: begin state <= (on)? (done_display)? WAIT_PRESS_EN : state : RESET_RAM; verif <= ~verif; end
 		endcase
 	end
 	
 	always @(posedge clk) begin
 		case (state)
 			OFF: begin op_display <= OFF; mode_ram <= IDLE; end
-			WAIT_PRESS_EN: begin op_display <= mode_ram <= IDLE; operation <= 0; end
+			WAIT_PRESS_EN: begin mode_ram <= IDLE; end
 			GET1: begin
-				op_display <= ON
+				op_display <= IDLE_LCD;
 				if (switch[17:15] == DISPLAY) begin
 					mode_ram <= GET;
 					address <= switch[14:11];
@@ -152,12 +163,11 @@ module module_mini_cpu(
 				mode_ram <= IDLE;
 				value2 <= data_out;
 			end
-			RESET_RAM: mode_ram <= RESET; op_display <= ON;
+			RESET_RAM: begin mode_ram <= RESET; op_display <= IDLE_LCD; end
 			RESET_OK: mode_ram <= IDLE;
-			CALCULATE: operation <= switch[17:15];
-			ULA_OK: begin value3 <= op_result; operation <= 0; end
+			ULA_OK: begin value3 <= result_ula; end
 			SET_RAM: begin 
-				op_display <= ON;
+				op_display <= IDLE_LCD;
 				mode_ram <= SET;
 				address <= switch[14:11];
 				data_in <= (switch[17:15] == LOAD)? switch[6:0] : value3;
@@ -167,15 +177,11 @@ module module_mini_cpu(
 				mode_ram <= GET;
 				address <= switch[14:11];
 			end
-			SHOW_DISPLAY: begin 
+			SHOW_DISPLAY: begin
+				mode_ram <= IDLE;
 				op_display <= UPD;
 			end
 		endcase
 	end
-	
-	assign EN = wire_en;
-	assign WR = wire_rw;
-	assign RS = wire_rs;
-	assign inst_lcd = data_inst_lcd;
 	
 endmodule
