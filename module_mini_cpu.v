@@ -17,7 +17,7 @@ module module_mini_cpu(
 				SUBI = 4, MUL = 5, 
 				CLEAR = 6, DISPLAY = 7;
 				
-	parameter DISPLAY_OFF = 0, UPDATE = 1, SHOW = 2;
+	parameter OFF = 0, ON = 1, UPD = 2;
 	
 	reg on = 0;
 	reg [3:0] state = OFF;
@@ -57,14 +57,14 @@ module module_mini_cpu(
 	
 	lcd_display display (
 		.clk(clk),
-		.operation(op_display),
+		.command(op_display),
 		.opcode(switch[17:15]),
 		.addr(switch[14:11]),
 		.data_addr(data_out),
 		.EN(wire_en),
 		.RW(wire_rw),
 		.RS(wite_rs),
-		.done_show(done_display),
+		.done_display(done_display),
 		.data(data_inst_lcd)
 	);
 	
@@ -75,7 +75,7 @@ module module_mini_cpu(
 	
 	always @(posedge clk) begin
 		case (state)
-			OFF: begin state <= (on)? WAIT_PRESS_EN : state; end
+			OFF: begin state <= (on)? (done_display)? WAIT_PRESS_EN : state : state; end
 			WAIT_PRESS_EN: begin state <= (on)? (~b_send)? WAIT_UNPRESS_EN : state : RESET_RAM; end
 			WAIT_UNPRESS_EN: begin
 				if (on) begin
@@ -122,10 +122,10 @@ module module_mini_cpu(
 	
 	always @(posedge clk) begin
 		case (state)
-			OFF: begin op_display <= DISPLAY_OFF; mode_ram <= IDLE; end
-			WAIT_PRESS_EN: begin mode_ram <= IDLE; operation <= 0; end
-			WAIT_UNPRESS_EN: begin op_display <= UPDATE; end
+			OFF: begin op_display <= OFF; mode_ram <= IDLE; end
+			WAIT_PRESS_EN: begin op_display <= mode_ram <= IDLE; operation <= 0; end
 			GET1: begin
+				op_display <= ON
 				if (switch[17:15] == DISPLAY) begin
 					mode_ram <= GET;
 					address <= switch[14:11];
@@ -152,11 +152,12 @@ module module_mini_cpu(
 				mode_ram <= IDLE;
 				value2 <= data_out;
 			end
-			RESET_RAM: mode_ram <= RESET;
+			RESET_RAM: mode_ram <= RESET; op_display <= ON;
 			RESET_OK: mode_ram <= IDLE;
 			CALCULATE: operation <= switch[17:15];
 			ULA_OK: begin value3 <= op_result; operation <= 0; end
 			SET_RAM: begin 
+				op_display <= ON;
 				mode_ram <= SET;
 				address <= switch[14:11];
 				data_in <= (switch[17:15] == LOAD)? switch[6:0] : value3;
@@ -167,7 +168,7 @@ module module_mini_cpu(
 				address <= switch[14:11];
 			end
 			SHOW_DISPLAY: begin 
-				op_display <= SHOW;
+				op_display <= UPD;
 			end
 		endcase
 	end
