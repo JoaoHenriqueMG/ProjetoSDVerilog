@@ -8,16 +8,29 @@ module memory (
 );
 
 parameter IDLE = 0, DECODER = 1, GET = 2, SET = 3, CLEAR = 4;
-reg [3:0] ram [15:0];
+reg [15:0] ram [15:0];
 reg [2:0] state = IDLE;
 reg [15:0] reg_data_out;
 reg reg_done;
 
 integer i;
 initial begin
-	for (i = 0; i < 16; i = i + 1) begin
-		ram[i] = 0;
-	end
+	ram[0] = 0;
+	ram[1] = 0;
+	ram[2] = 0;
+	ram[3] = 0;
+	ram[4] = 0;
+	ram[5] = 0;
+	ram[6] = 0;
+	ram[7] = 0;
+	ram[8] = 0;
+	ram[9] = 0;
+	ram[10] = 0;
+	ram[11] = 0;
+	ram[12] = 0;
+	ram[13] = 0;
+	ram[14] = 0;
+	ram[15] = 0;
 end
 
 always @(posedge clk) begin
@@ -44,7 +57,7 @@ always @(posedge clk) begin
 	endcase
 end
 
-	always @(state)begin
+always @(state) begin
 	case (state) 
 		IDLE: begin
 			reg_data_out <= reg_data_out;
@@ -63,9 +76,22 @@ end
 			reg_done <= 1;
 		end
 		CLEAR: begin
-			for (i = 0; i < 16; i = i + 1) begin
-				ram[i] = 0;
-			end
+			ram[0] = 0;
+			ram[1] = 0;
+			ram[2] = 0;
+			ram[3] = 0;
+			ram[4] = 0;
+			ram[5] = 0;
+			ram[6] = 0;
+			ram[7] = 0;
+			ram[8] = 0;
+			ram[9] = 0;
+			ram[10] = 0;
+			ram[11] = 0;
+			ram[12] = 0;
+			ram[13] = 0;
+			ram[14] = 0;
+			ram[15] = 0;
 			reg_done <= 1;
 		end
 	endcase
