@@ -4,8 +4,8 @@ module cpu_ula(
 	input [2:0] 			op_code,
 	input [15:0] 			src1,
 								src2,
-	output reg [15:0] 	op_result,
-	output reg 				done // sinalização de êxito da operação
+	output [15:0] 	op_result,
+	output				done // sinalização de êxito da operação
 );
 
 // parâmetros para o valor do operador
@@ -26,6 +26,8 @@ reg [15:0] 	temp_src1 = 0,
 				reg_op_result = 0;
 
 reg [2:0] temp_op_code;
+
+reg done;
 
 // valores para os estados da ULA
 reg [1:0] state = START;
@@ -52,7 +54,7 @@ end
 always @ (*) begin
 	case (state)
 		START: begin // reseta o done, salva os valores para evitar inconsistência no estado seguinte
-			done = 0;
+			reg_done = 0;
 			temp_src1 = src1;
 			temp_src2 = src2;
 			temp_op_code = op_code;
@@ -60,27 +62,29 @@ always @ (*) begin
 		CALCULATE: begin // gera o resultado da operação
 			case (temp_op_code)
 				ADD:
-					op_result = temp_src1 + temp_src2;
+					reg_op_result = temp_src1 + temp_src2;
 				ADDI:
 					if (temp_src2[6])
-						op_result = temp_src1 - temp_src2[5:0];
+						reg_op_result = temp_src1 - temp_src2[5:0];
 					else
-						op_result = temp_src1 + temp_src2[5:0];
+						reg_op_result = temp_src1 + temp_src2[5:0];
 				SUB:
-					op_result = temp_src1 - temp_src2;
+					reg_op_result = temp_src1 - temp_src2;
 				SUBI:
 					if (temp_src2[6])
-						op_result = temp_src1 + temp_src2[5:0];
+						reg_op_result = temp_src1 + temp_src2[5:0];
 					else
-						op_result = temp_src1 - temp_src2[5:0];
+						reg_op_result = temp_src1 - temp_src2[5:0];
 				MUL:
-					op_result = temp_src1 * temp_src2;
-				default: op_result = op_result;
+					reg_op_result = temp_src1 * temp_src2;
+				default: reg_op_result = op_result;
 				endcase
 		end
 		FINISH: // confirmação da conclusão da operação
-			done = 1;
+			reg_done = 1;
 	endcase
 end
+
+assign op_result = reg_op_result, done = reg_done;
 
 endmodule
