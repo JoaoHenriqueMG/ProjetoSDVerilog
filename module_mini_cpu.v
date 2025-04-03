@@ -7,12 +7,12 @@ module module_mini_cpu(
 	output [15:0] att
 );
 	
-	parameter IDLE = 0, START = 0, GET = 1, SET = 2, RESET = 3;
+	parameter IDLE = 0, OFF = 0, GET = 1, SET = 2, RESET = 3;
 
-	parameter OFF = 0, WAIT_PRESS_EN = 1,
-				WAIT_UNPRESS_EN = 2,
-				GET1 = 3, GET1_OK = 4, GET2 = 5, GET2_OK = 6,  RESET_RAM = 7, RESET_OK = 8, CALCULATE = 9, ULA_OK = 10,
-				SET_RAM = 11, SET_OK = 12, GET_UPDATE = 13, GET_UP = 14, SHOW_DISPLAY = 15;
+	parameter OFF_CPU = 0, WAIT_PRESS = 1, WAIT_UNPRESS = 2, SEARCH_V1 = 3, GET_V1 = 4,
+				 SEARCH_V2 = 5, GET_V2 = 6, CALCULATE = 7, RESULT_CALC = 8, SET_RAM = 9, SET_OK = 10, LCD_UPD = 11,
+				 LCD_OK = 12, CLEAR_RAM = 13, CLEAR_OK = 14, RESET_RAM = 15, RESET_OK = 16, GET_UP = 17, GET_UP_OK = 18, REINIT1_RAM = 19, REINIT2_RAM = 20;
+					 
 	
 	parameter LOAD = 0, ADD = 1, 
 				ADDI = 2, SUB = 3, 
@@ -23,7 +23,9 @@ module module_mini_cpu(
 	
 	reg on = 0;
 	
-	reg [3:0] state = OFF;
+	reg reset_ula = 0;
+	
+	reg [4:0] state = OFF_CPU;
 	
 	reg [3:0] address;
 	
@@ -61,7 +63,8 @@ module module_mini_cpu(
 	
 	cpu_ula ula (
 		.clk(clk),
-		.op_code(operation),
+		.reset(reset_ula),
+		.op_code(switch[17:15]),
 		.src1(value1),
 		.src2(value2),
 		.op_result(result_ula),
@@ -86,100 +89,109 @@ module module_mini_cpu(
 	end
 	
 	always @(posedge clk) begin
-		case (state)
-			OFF: begin state <= (on)? WAIT_PRESS_EN : state; end
-			WAIT_PRESS_EN: begin state <= (on)? (~b_send)? WAIT_UNPRESS_EN : state : RESET_RAM; end
-			WAIT_UNPRESS_EN: begin
+		case(state)
+			OFF_CPU: begin state <= (on)? WAIT_PRESS : RESET_RAM; end
+			WAIT_PRESS: state <= (on)? (b_send)? WAIT_PRESS : WAIT_UNPRESS : RESET_RAM;
+			WAIT_UNPRESS: begin
 				if (on) begin
 					if (b_send) begin
-						case (switch[17:15])
-							LOAD: begin state <= SET_RAM; end
-							CLEAR: state <= RESET_RAM;
-							default: state <= GET1;
-						endcase
-					end else begin
-						state <= state;
-					end
-				end else begin
-					state <= RESET_RAM;
-				end
+						if (switch[17:15] == LOAD)
+							state <= REINIT2_RAM;
+						else if (switch[17:15] == CLEAR)
+							state <= CLEAR_RAM;
+						else if (switch[17:15] == DISPLAY)
+							state <= GET_UP;
+						else
+							state <= SEARCH_V1;
+					end else
+						state <= WAIT_UNPRESS;
+				end else
+					state <=RESET_RAM;
 			end
-			GET1: begin state <= (on)? (done_ram)? GET1_OK : state : RESET_RAM; end
-			GET1_OK: begin
+			SEARCH_V1: state <= (on)? (done_ram) ? GET_V1 : SEARCH_V1 : RESET_RAM;
+			GET_V1: begin
 				if (on) begin
-					case(switch[17:15])
-						ADD: state <= GET2;
-						ADDI: state <= CALCULATE;
-						SUB: state <= GET2;
-						SUBI: state <= CALCULATE;
-						MUL: state <= CALCULATE;
-						DISPLAY: state <= GET_UPDATE;
-					endcase
-				end else begin
+					if (switch[17:15] == ADD | switch[17:15] == SUB)
+						state <= REINIT1_RAM;
+					else 
+						state <= CALCULATE;
+				end else
 					state <= RESET_RAM;
-				end
 			end
-			GET2: begin state <= (on)? (done_ram)? GET2_OK : state : RESET_RAM; end
-			GET2_OK: begin state <= (on)? CALCULATE : RESET_RAM; end
-			RESET_RAM: begin state <= (done_ram)? (on)? OFF : RESET_OK : state; end
-			RESET_OK: begin state <= (on)? GET_UPDATE : OFF; end
-			CALCULATE: begin state <= (on)? (done_ula) ? ULA_OK : RESET_RAM : state; end
-			ULA_OK: begin state <= (on)? SET_RAM : RESET_RAM; end
-			SET_RAM: begin state <= (on)? (done_ram)? SET_OK : state : RESET_RAM; end
-			SET_OK: begin state <= (on)? GET_UPDATE : RESET_RAM; end
-			GET_UPDATE: begin state <= (on)? (done_ram)? SHOW_DISPLAY : state : RESET_RAM; end
-			SHOW_DISPLAY: begin state <= (on)? (done_display)? WAIT_PRESS_EN : state : RESET_RAM; end
+			REINIT1_RAM: state <= (on) ? (done_ram)? REINIT1_RAM : SEARCH_V2 : RESET_RAM;
+			SEARCH_V2: state <= (on)? (done_ram) ? GET_V2 : SEARCH_V2 : RESET_RAM;
+			GET_V2: state <= CALCULATE;
+			CALCULATE: state <= (on)? (done_ula)? RESULT_CALC : CALCULATE : RESET_RAM;
+			RESULT_CALC: state <= (on)? REINIT2_RAM : RESET_RAM;
+			REINIT2_RAM : state <= (on)? (done_ram)? REINIT2_RAM : SET_RAM : RESET_RAM;
+			SET_RAM: state <= (on)? (done_ram)? SET_OK : SET_RAM : RESET_RAM;
+			SET_OK: state <= (on)? GET_UP : RESET_RAM;
+			GET_UP: state <= (on)? (done_ram)? LCD_UPD : GET_UP : RESET_RAM;
+			LCD_UPD: state <= (on)? (done_display)? LCD_OK : LCD_UPD : RESET_RAM;
+			LCD_OK: state <= (on)? WAIT_PRESS : RESET_RAM;
+			CLEAR_RAM: state <= (on)? (done_ram)? CLEAR_OK : CLEAR_RAM: RESET_RAM;
+			CLEAR_OK: state <= (on)? GET_UP : RESET_RAM;
+			RESET_RAM: state <= (done_ram)? RESET_OK : RESET_RAM;
+			RESET_OK: state <= OFF_CPU;
+			
 		endcase
 	end
 	
 	always @(posedge clk) begin
-		case (state)
-			OFF: begin op_display <= OFF; mode_ram <= IDLE; operation <= START; end
-			WAIT_PRESS_EN: begin mode_ram <= IDLE; op_display <= IDLE_LCD; operation <= START; value3 <= 0; end
-			GET1: begin
+		case(state)
+			OFF_CPU: begin op_display = OFF; op_display <= OFF; mode_ram <= IDLE; end
+			WAIT_PRESS: begin reset_ula <= 0; op_display = IDLE_LCD; mode_ram <= IDLE; end
+			SEARCH_V1: begin
 				mode_ram <= GET;
 				address <= switch[10:7];
 			end
-			GET1_OK: begin
+			GET_V1: begin
 				mode_ram <= IDLE;
 				value1 <= data_out;
-				data_show <= data_out;
-				case (switch[17:15])
-					ADDI: value2 <= switch[6:0];
-					SUBI: value2 <= switch[6:0];
-					MUL: value2 <= switch[6:0];
-					default: address <= switch[6:3];
-				endcase
 			end
-			GET2: begin
+			SEARCH_V2: begin
 				mode_ram <= GET;
+				address <= switch[6:3];
 			end
-			GET2_OK: begin
+			GET_V2: begin
 				mode_ram <= IDLE;
 				value2 <= data_out;
 			end
-			RESET_RAM: begin mode_ram <= RESET; end
-			RESET_OK: mode_ram <= IDLE;
-			CALCULATE: operation <= switch[17:15];
-			ULA_OK: begin operation <= START; value3 <= result_ula; end
-			SET_RAM: begin 
+			CALCULATE: begin
+				reset_ula <= 1;
+				if (switch[17:15] == ADDI | switch[17:15] == SUBI | switch[17:15] == MUL)
+					value2 <= switch[6:0];
+			end
+			RESULT_CALC: begin
+				reset_ula <= 0;
+				value3 <= result_ula;
+			end
+			SET_RAM: begin
 				mode_ram <= SET;
 				address <= switch[14:11];
-				data_in <= (switch[17:15] == LOAD)? switch[6:0] : value3;
+				if (switch[17:15] == LOAD)
+					data_in <= switch[6:0];
+				else 
+					data_in <= value3;
 			end
-			GET_UPDATE: begin
+			SET_OK: mode_ram = IDLE;
+			GET_UP: begin
 				mode_ram <= GET;
 				address <= switch[14:11];
 			end
-			SHOW_DISPLAY: begin
-				mode_ram <= IDLE;
-				op_display <= UPD;
+			LCD_UPD: begin
 				data_show <= data_out;
+				mode_ram = IDLE;
+				op_display <= UPD;
 			end
+			LCD_OK: op_display <= IDLE_LCD;
+			CLEAR_RAM: mode_ram <= RESET;
+			CLEAR_OK: mode_ram <= IDLE;
+			RESET_RAM: mode_ram <= RESET;
+			RESET_OK: mode_ram <= IDLE;
 		endcase
 	end
-		
-		
+	
 	assign verif = done_display;
 	assign att = value3;
 	
