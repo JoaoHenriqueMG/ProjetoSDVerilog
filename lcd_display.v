@@ -1,15 +1,16 @@
 module lcd_display (
 	input clk,
-	input on,
-	input upd;
-	input [3:0] opcode, 
+	input [1:0] command,
+	input [3:0] opcode,
 	input [3:0] addr,
-	output reg EN, RW, RS, done_show,
+	input [15:0] data_addr,
+	output reg EN, RW, RS, done_display,
 	output reg [7:0] data
 );
 
 parameter WRITE = 0, WAIT = 1; // Estados do lcd
-parameter OFF = 0, INIT = 1, UPDATE = 2, SHOW = 3; // Tipos de operações
+parameter OFF = 0, UPD = 1, IDLE = 2;
+parameter INIT = 1, UPDATE = 2, SHOW = 3, WAIT_UP = 4; // Tipos de operações
 parameter LOAD = 0, ADD = 1, ADDI = 2, SUB = 3, SUBI = 4, MUL = 5, CLEAR = 6, DISPLAY = 7; // Comandos do opcode
 
 reg state = WRITE;
@@ -19,8 +20,7 @@ reg [7:0] show_opcode [3:0];
 reg [7:0] show_addr [3:0];
 reg [7:0] show_data_addr [5:0];
 reg [14:0] num_data;
-reg [15:0] data_addr = 69;
-reg [1:0] operation;
+reg [2:0] operation = OFF;
 
 integer counter = 0;
 
@@ -37,12 +37,9 @@ always @ (posedge clk) begin
 			if (counter == 50000 - 1) begin
 				counter <= 0;
 				state <= WRITE;
-				if (operation == OFF) begin
-					if (instructions < 2) instructions <= instructions + 1;
-					else instructions <= instructions;
-				end else if (operation == SHOW) begin
+				if (operation == SHOW) begin
 					if (instructions < 41) instructions <= instructions + 1;
-					else instructions <= instructions;
+					else instructions <= 41;
 				end else 
 					instructions <= 0;
 			end else
@@ -53,10 +50,11 @@ end
 
 always @(posedge clk) begin 
 	case(operation)
-		OFF: begin operation <= (on)? INIT : operation; end
-		INIT: begin operation <= (on)? SHOW : OFF; end
-		UPDATE: begin operation <= (on)? SHOW : OFF; end
-		SHOW: begin operation <= (on)? (upd)? UPDATE: SHOW : OFF; end
+		OFF: begin operation <= (command == OFF)? operation : INIT; end
+		INIT: operation <= (command == OFF)? OFF : SHOW;
+		SHOW: begin operation <= (command == OFF)? OFF : (done_display)? WAIT_UP : operation; end /*NA MINHA HUMILDE OPINIÃO ESSE OPERADOR TERNÀRIO É LONGO E DESNECESSARIAMENTE COMPLICADO DE LER. ass. Pedro Inácio*/
+		UPDATE: operation <= (command == OFF)? OFF : SHOW; 
+		WAIT_UP: operation <= (command == OFF)? OFF : (command == UPD)? UPDATE : operation; 
 	endcase
 end
 
@@ -67,11 +65,12 @@ always @ (posedge clk) begin
 	endcase
 	
 	case (operation)
-		OFF: begin 
+		OFF: begin
+			done_display <= 0;
 			case(instructions)
-				0: begin data <= 8'h38; RS <= 0; end // Set 2 lines
-				1: begin data <= 8'h08; RS <= 0; end // Display off, cursor off
+         0: begin data <= 8'h08; RS <= 0; end // Set 2 lines
 			endcase
+		end
 		INIT: begin
 			show_opcode[3] <= 8'h2D; // Write '-'
 			show_opcode[2] <= 8'h2D; // Write '-'
@@ -89,7 +88,6 @@ always @ (posedge clk) begin
 			show_data_addr[0] <= 8'h30; // Write 0
 		end
 		UPDATE: begin
-			done_show <= 0;
 			case (opcode)
 				LOAD: begin 
 					show_opcode[3] <= 8'h4C; // L
@@ -160,7 +158,7 @@ always @ (posedge clk) begin
 		SHOW: begin
 			case (instructions)
 				0: begin data <= 8'h38; RS <= 0; end // Set 2 lines
-				1: begin data <= 8'h0E; RS <= 0; end // Display on, cursor blinking
+				1: begin data <= 8'h0C; RS <= 0; end // Display on, cursor off
 				2: begin data <= 8'h01; RS <= 0; end // Clear display screen
 				3: begin data <= 8'h02; RS <= 0; end // Return home
 				4: begin data <= 8'h06; RS <= 0; end // Shift cursor to right
@@ -200,9 +198,11 @@ always @ (posedge clk) begin
 				38: begin data <= show_data_addr[0]; RS <= 1; end
 				39: begin data <= 8'h02; RS <= 0; end // Return home
 				40: begin data <= 8'h06; RS <= 0; end // Shift cursor to right
-				default: done_show <= 1;
+				default: done_display <= 1;
 			endcase
 		end
+		WAIT_UP: done_display <= 0;
 	endcase
 end
+
 endmodule
