@@ -119,7 +119,7 @@ module module_mini_cpu(
 					state <= RESET_RAM;
 			end
 			SEARCH_V2: state <= (on)? (done_ram) ? GET_V2 : SEARCH_V2 : RESET_RAM;
-			GET_V2: state <= CALCULATE;
+			GET_V2: state <= (on)? CALCULATE : RESET_RAM;
 			CALCULATE: state <= (on)? (done_ula)? RESULT_CALC : CALCULATE : RESET_RAM;
 			RESULT_CALC: state <= (on)? SET_RAM : RESET_RAM;
 			SET_RAM: state <= (on)? (done_ram)? SET_OK : SET_RAM : RESET_RAM;
