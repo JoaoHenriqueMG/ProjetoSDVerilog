@@ -57,7 +57,7 @@ always @(posedge clk) begin
 	endcase
 end
 
-always @(state) begin
+	always @(posedge clock) begin
 	case (state) 
 		IDLE: begin
 			reg_data_out <= reg_data_out;
